@@ -1,0 +1,29 @@
+.rules-button {
+  display: flex;
+  -webkit-box-pack: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  transition: all 0.1s ease 0s;
+  color: white;
+  background-color: rgb(46, 50, 64);
+  box-shadow: none;
+  border: transparent;
+  text-decoration: none;
+  font-weight: 600;
+  font-family: inherit;
+  text-shadow: rgba(0, 0, 0, 0.3) 0.5px 1px 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.numbered-list {
+  margin: 0;
+  list-style-position: inside;
+  list-style-type: none;
+  padding: 0;
+  font-weight: 500;
+  font-size: 0.85rem;
+  counter-reset: numbers;
+}

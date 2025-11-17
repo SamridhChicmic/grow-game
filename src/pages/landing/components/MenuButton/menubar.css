@@ -1,0 +1,35 @@
+.hamburger-bar {
+  background: currentcolor;
+  height: 2px;
+  left: 15px;
+  position: absolute;
+  width: 18px;
+  transition: all 0.2s cubic-bezier(0, 0, 0, 1);
+}
+
+.hamburger-bar:first-child {
+  top: 17px;
+  transition-delay: 0.2s;
+  transform: rotate(45deg);
+}
+
+.hamburger-bar:nth-child(2) {
+  top: 23px;
+}
+
+.hamburger-bar:last-child {
+  top: 29px;
+  transition-delay: 0.2s;
+  transform: rotate(-45deg);
+}
+
+.hamburger {
+  cursor: pointer;
+  height: 48px;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0, 0, 0, 1) 0s;
+  user-select: none;
+  width: 48px;
+  outline: none;
+  transform: none;
+}

@@ -1,0 +1,24 @@
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 100%;
+  border-width: 2px;
+  border-style: solid;
+  border-color: white white transparent;
+  border-image: initial;
+  display: inline-block;
+  animation: 0.75s linear 0s infinite normal both running
+    react-spinners-ClipLoader-clip;
+}
+
+@keyframes react-spinners-ClipLoader-clip {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.8);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}

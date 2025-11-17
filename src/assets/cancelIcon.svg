@@ -1,0 +1,23 @@
+ <svg
+      width="25"
+      height="25"
+      viewBox="0 0 25 25"
+      fill="#a3a6c2"
+      xmlns="http://www.w3.org/2000/svg"
+
+    >
+      <path
+        d="M18.8984 6.5L6.89844 18.5"
+        stroke="#a3a6c2"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.89844 6.5L18.8984 18.5"
+        stroke="#a3a6c2"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>

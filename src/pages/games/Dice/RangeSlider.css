@@ -1,0 +1,41 @@
+.range-slider {
+  width: 100%;
+  position: relative;
+}
+
+.range-slider__input {
+  width: 100%;
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+.range-slider__track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #ccc;
+  transform: translateY(-50%);
+}
+
+.range-slider__track-value {
+  height: 100%;
+  background-color: green;
+  position: relative;
+}
+
+.range-slider__thumb {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: purple;
+}
+
+.slider-disabled .rc-slider-handle {
+  cursor: not-allowed !important;
+}
