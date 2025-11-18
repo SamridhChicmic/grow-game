@@ -20,6 +20,8 @@ enum ColorChoice {
   green = "green",
 }
 
+let walletBalance = 0;
+
 type Player = {
   bet: string;
   user: { username: string; photo: string };
@@ -39,6 +41,12 @@ export default function Roulette() {
   const auth = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const { balance } = useAppSelector((state) => state.wallet);
+
+  useEffect(() => {
+    if (typeof balance === "number") {
+      walletBalance = balance;
+    }
+  }, [balance]);
   const [outcome, setOutCome] = useState(5);
   const [players, setPlayers] = useState<RoulettePlayer[]>([]);
   const [rolling, setRolling] = useState(false);
@@ -68,33 +76,48 @@ export default function Roulette() {
   }, []);
 
   useEffect(() => {
-    socket.on("ROULETTE:start", (data) => {
-      const outCome = data;
-      console.log("ROULETTE-result: ", outCome);
-      // setElements(data.elements);
-      setOutCome(outCome);
-    });
+    const handleStart = (data: number) => {
+      setOutCome(data);
+    };
 
-    socket.on("ROULETTE:rollTime", (data) => {
+    const handleRollTime = (data: number) => {
       setRollTime(data);
-    });
+    };
 
-    socket.on("ROULETTE:players", (data) => {
+    const handlePlayers = (data: RoulettePlayer[]) => {
       setPlayers(data);
-    });
+    };
 
-    socket.on("ROULETTE:win", () => {
+    const handleWin = (data?: { profit?: number }) => {
+      if (data?.profit) {
+        dispatch(updateBalance(walletBalance + data.profit));
+      }
       showToast("You Won", "success");
-    });
+    };
 
-    socket.on("ROULETTE:history", (data) => {
+    const handleHistory = (data: ColorChoice[]) => {
       setLastHundredRolls(data);
-    });
+    };
+
+    socket.on("ROULETTE:start", handleStart);
+    socket.on("ROULETTE:rollTime", handleRollTime);
+    socket.on("ROULETTE:players", handlePlayers);
+    socket.on("ROULETTE:win", handleWin);
+    socket.on("ROULETTE:history", handleHistory);
 
     return () => {
-      socket.off();
+      socket.off("ROULETTE:start", handleStart);
+      socket.off("ROULETTE:rollTime", handleRollTime);
+      socket.off("ROULETTE:players", handlePlayers);
+      socket.off("ROULETTE:win", handleWin);
+      socket.off("ROULETTE:history", handleHistory);
     };
-  }, [showToast]);
+  }, [dispatch, showToast]);
+
+  useEffect(() => {
+    socket.emit("ROULETTE:get_players");
+    socket.emit("ROULETTE:get_history");
+  }, []);
 
   const placeBet = async (choice: ColorChoice) => {
     if (!auth.user)

@@ -5,6 +5,11 @@ import { clearUser } from "@/store/slices/auth";
 import { API_URL, USE_MOCKS } from "@/utils/constants";
 import socket from "@/utils/constants";
 import { MockSocket } from "@/utils/mockSocket";
+import {
+  prepareRouletteBet,
+  getRoulettePlayers,
+  scheduleRouletteRound,
+} from "@/utils/mockRoulette";
 import axios, {
   AxiosError,
   type AxiosAdapter,
@@ -461,6 +466,23 @@ const createMockAdapter = (): AxiosAdapter => {
                 status: playerWon ? "win" : "lose",
               });
             }, 700);
+          }
+        }
+        
+        // Handle ROULETTE game flow
+        if (USE_MOCKS && body.gameType === "ROULETTE") {
+          const mockSocket = socket as MockSocket;
+          const choice =
+            typeof body.choice === "string" ? body.choice.toLowerCase() : "red";
+          if (mockSocket && typeof mockSocket.dispatch === "function") {
+            const socketId =
+              typeof body.socketId === "string" ? body.socketId : mockSocket.id;
+            prepareRouletteBet(socketId, stake, choice, {
+              username: mockState.user.username,
+              photo: mockState.user.photo,
+            });
+            mockSocket.dispatch("ROULETTE:players", getRoulettePlayers());
+            scheduleRouletteRound(mockSocket);
           }
         }
         

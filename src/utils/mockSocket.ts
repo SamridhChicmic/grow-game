@@ -1,3 +1,9 @@
+import { GameType } from "@/game-types";
+import {
+  getRouletteHistory,
+  getRoulettePlayers,
+} from "./mockRoulette";
+
 type Listener = (...args: any[]) => void;
 
 type Reaction = {
@@ -29,7 +35,15 @@ const createMockPlayer = () => ({
 
 // Create mock leaderboard data matching AllBets component structure
 const createMockLeaderboardTable = (length = 25) => {
-  const gameTypes: GameType[] = ["LIMBO", "COINFLIP", "DICE", "CRASH", "MINES", "ROULETTE", "SLOTS"];
+  const gameTypes: GameType[] = [
+    GameType.LIMBO,
+    GameType.COINFLIP,
+    GameType.DICE,
+    GameType.CRASH,
+    GameType.MINES,
+    GameType.ROULETTE,
+    GameType.REME,
+  ];
   return Array.from({ length }, () => ({
     gameType: gameTypes[Math.floor(Math.random() * gameTypes.length)] as GameType,
     player: randomUsername(),
@@ -109,6 +123,24 @@ const reactions: Reaction[] = [
       });
       socket.dispatch("usersCount", autoEvents[0].payload());
       socket.dispatch("incoming_message", createMockMessage());
+    },
+  },
+  {
+    match: (event) => event === "ROULETTE:get_players",
+    emit: (socket) => {
+      socket.dispatch("ROULETTE:players", getRoulettePlayers());
+    },
+  },
+  {
+    match: (event) => event === "ROULETTE:get_history",
+    emit: (socket) => {
+      socket.dispatch("ROULETTE:history", getRouletteHistory());
+    },
+  },
+  {
+    match: (event) => event === "ROULETTE:get_roll_time",
+    emit: (socket) => {
+      socket.dispatch("ROULETTE:rollTime", 5);
     },
   },
   {
