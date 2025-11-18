@@ -75,9 +75,21 @@ export default function Crash() {
 
       if (response.status !== 201) return toast.error(response.data.message);
 
-      dispatch(updateBalance(balance - bet.stake));
+      dispatch(updateBalance(balance - bet.stake!));
 
       toast.success("bet placed!");
+      
+      // Add player to players list immediately
+      if (player.user) {
+        setPlayers((prev) => [
+          ...prev,
+          {
+            ...player,
+            stake: bet.stake || 0,
+            multiplier: bet.multiplier || 1.2,
+          },
+        ]);
+      }
     } catch (error) {
       const err = error as AxiosError<{ message: string }>;
       console.error({ error });
@@ -100,7 +112,11 @@ export default function Crash() {
 
     socket.on("CRASH:win", (players: Player[]) => {
       console.log("YOU WON! ", players);
-      toast.success("You won!");
+      const winningPlayer = players.find((p) => p.user?.username === auth.user?.username);
+      if (winningPlayer) {
+        toast.success(`You won! Profit: ${winningPlayer.profit?.toFixed(2)}`);
+        dispatch(updateBalance(balance + (winningPlayer.profit || 0)));
+      }
     });
 
     // socket.on("CRASH:end", (data) => {

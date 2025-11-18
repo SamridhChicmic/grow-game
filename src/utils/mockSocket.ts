@@ -132,7 +132,6 @@ const reactions: Reaction[] = [
     match: (event) => event === "CRASH:get_history",
     emit: (socket) => {
       socket.dispatch("CRASH:history", createMockHistory());
-      socket.dispatch("CRASH:win", createMockLeaderboard(3));
     },
   },
   {

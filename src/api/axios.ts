@@ -367,6 +367,72 @@ const createMockAdapter = (): AxiosAdapter => {
           }
         }
         
+        // Handle CRASH game flow
+        if (USE_MOCKS && body.gameType === "CRASH") {
+          const mockSocket = socket as MockSocket;
+          if (mockSocket && typeof mockSocket.dispatch === "function") {
+            // Start the game after a short delay
+            setTimeout(() => {
+              mockSocket.dispatch("CRASH:start", {});
+              
+              // Generate a random crash multiplier (between 1.01 and 10.00)
+              const crashMultiplier = parseFloat((Math.random() * 8.99 + 1.01).toFixed(2));
+              
+              // Game runs for 3-8 seconds before crashing
+              const gameDuration = Math.random() * 5000 + 3000;
+              
+              setTimeout(() => {
+                // Stop the game at the crash multiplier
+                mockSocket.dispatch("CRASH:stop", crashMultiplier);
+                
+                // Check if player won (their auto cashout is less than crash multiplier)
+                const playerWon = targetMultiplier < crashMultiplier;
+                const playerProfit = playerWon 
+                  ? stake * targetMultiplier // Total winnings
+                  : 0;
+                
+                // Update bet with actual profit
+                bet.profit = playerProfit;
+                mockState.bets.set(bet._id, bet);
+                
+                // Notify winners
+                if (playerWon) {
+                  setTimeout(() => {
+                    mockSocket.dispatch("CRASH:win", [{
+                      user: mockState.user,
+                      multiplier: targetMultiplier,
+                      stake: stake,
+                      profit: playerProfit,
+                    }]);
+                  }, 500);
+                }
+                
+                // Return to betting phase after showing results
+                setTimeout(() => {
+                  mockSocket.dispatch("CRASH:bet", {});
+                  // Update players list - create simple mock players
+                  const mockPlayers = Array.from({ length: 10 }, () => ({
+                    user: {
+                      username: `Player${Math.floor(Math.random() * 900 + 100)}`,
+                      photo: "/logo.png",
+                    },
+                    multiplier: parseFloat((Math.random() * 8.99 + 1.01).toFixed(2)),
+                    stake: parseFloat((Math.random() * 99 + 0.1).toFixed(2)),
+                    profit: parseFloat((Math.random() * 200 - 50).toFixed(2)),
+                  }));
+                  mockSocket.dispatch("CRASH:players", mockPlayers);
+                  // Update history with new crash multiplier
+                  const historyLength = 12;
+                  const newHistory = Array.from({ length: historyLength }, (_, i) => 
+                    i === 0 ? crashMultiplier : parseFloat((Math.random() * 8.99 + 1.01).toFixed(2))
+                  );
+                  mockSocket.dispatch("CRASH:history", newHistory);
+                }, 2000);
+              }, gameDuration);
+            }, 500);
+          }
+        }
+        
         return {
           status: 201,
           data: { message: "Bet placed (mock)", bet },
