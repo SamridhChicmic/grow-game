@@ -432,6 +432,37 @@ const createMockAdapter = (): AxiosAdapter => {
             }, 500);
           }
         }
+
+        // Handle DICE game flow
+        if (USE_MOCKS && body.gameType === "DICE") {
+          const mockSocket = socket as MockSocket;
+          if (mockSocket && typeof mockSocket.dispatch === "function") {
+            setTimeout(() => {
+              const diceResult = parseFloat((Math.random() * 99.8 + 0.1).toFixed(2));
+              const direction =
+                typeof body.direction === "string"
+                  ? (body.direction.toLowerCase() as "over" | "under")
+                  : "over";
+              const rangeValue = Number(body.rangeValue) || 50;
+
+              const playerWon =
+                direction === "over" ? diceResult > rangeValue : diceResult < rangeValue;
+              const payout = playerWon ? stake * targetMultiplier : 0;
+
+              bet.profit = payout;
+              mockState.bets.set(bet._id, bet);
+
+              mockSocket.dispatch("DICE:result", {
+                result: diceResult,
+                profit: payout,
+                multiplier: targetMultiplier,
+                rangeValue,
+                direction,
+                status: playerWon ? "win" : "lose",
+              });
+            }, 700);
+          }
+        }
         
         return {
           status: 201,
