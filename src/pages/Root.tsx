@@ -2,6 +2,8 @@ import { Outlet, useSearchParams } from "react-router-dom";
 import { AuthForm, Modal } from "@/components";
 import { closeModal, triggerModal } from "@/store/slices/modal";
 import { useAppDispatch, useAppSelector } from "@/hooks/store";
+import { setUser } from "@/store/slices/auth";
+import { USE_MOCKS } from "@/utils/constants";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BottomNav, Chat, Header } from "./landing/components";
@@ -18,6 +20,28 @@ export default function Root() {
 
   const authModal = searchParams.get("modal");
   const auth = useAppSelector((state) => state.auth);
+
+  // Auto-authenticate in mock mode if not already authenticated
+  useEffect(() => {
+    if (USE_MOCKS && !auth.isAuthenticated) {
+      const mockUser: User = {
+        id: "mock-user-id",
+        username: "DemoGrower",
+        email: "demo@grow.game",
+        firstName: "Demo",
+        lastName: "User",
+        photo: "/logo.png",
+        background: "/images/characters/backgrounds/sunny.webp",
+      };
+      dispatch(
+        setUser({
+          user: mockUser,
+          token: "mock-token",
+          isAuthenticated: true,
+        }),
+      );
+    }
+  }, [USE_MOCKS, auth.isAuthenticated, dispatch]);
 
   useEffect(() => {
     console.log("CONNECT_USER_TO_SOCKET: ", {

@@ -3,6 +3,8 @@
 import store from "@/store";
 import { clearUser } from "@/store/slices/auth";
 import { API_URL, USE_MOCKS } from "@/utils/constants";
+import socket from "@/utils/constants";
+import { MockSocket } from "@/utils/mockSocket";
 import axios, {
   AxiosError,
   type AxiosAdapter,
@@ -88,7 +90,7 @@ type MockChatMessage = {
 const mockState = {
   token: "mock-token",
   refreshToken: "mock-refresh-token",
-  walletBalance: 1250,
+  walletBalance: 1000000, // Set to 1,000,000 for testing
   bets: new Map<string, MockBetRecord>(),
   user: {
     id: "mock-user-id",
@@ -328,14 +330,43 @@ const createMockAdapter = (): AxiosAdapter => {
         config.method === "post" && resolvePath(config) === "/bet",
       respond: (config) => {
         const body = parseData(config);
+        const stake = Number(body.stake) || 0;
+        const targetMultiplier = Number(body.multiplier) || 1;
+        
+        // Generate random result multiplier (between 0.01 and 10)
+        const resultMultiplier = parseFloat((Math.random() * 9.99 + 0.01).toFixed(2));
+        
+        // Determine win/lose based on whether result exceeds target
+        const isWin = resultMultiplier >= targetMultiplier;
+        // Profit calculation: Since stake is already deducted when bet is placed,
+        // profit should be the total winnings (stake * multiplier) for wins, or 0 for losses
+        const profit = isWin 
+          ? stake * targetMultiplier // Total winnings = stake * multiplier
+          : 0; // No profit on loss (stake already deducted)
+        
         const bet: MockBetRecord = {
           _id: uuid(),
-          stake: Number(body.stake) || 0,
-          multiplier: Number(body.multiplier) || 1,
-          profit: Number(body.profit) || 0,
+          stake,
+          multiplier: targetMultiplier,
+          profit,
           gameType: body.gameType,
         };
         mockState.bets.set(bet._id, bet);
+        
+        // Emit LIMBO result via socket if it's a Limbo game
+        if (USE_MOCKS && body.gameType === "LIMBO") {
+          const mockSocket = socket as MockSocket;
+          if (mockSocket && typeof mockSocket.dispatch === "function") {
+            setTimeout(() => {
+              mockSocket.dispatch("LIMBO:result", {
+                result: resultMultiplier,
+                status: isWin ? "win" : "lose",
+                profit: isWin ? profit : 0,
+              });
+            }, 100); // Small delay to simulate server processing
+          }
+        }
+        
         return {
           status: 201,
           data: { message: "Bet placed (mock)", bet },

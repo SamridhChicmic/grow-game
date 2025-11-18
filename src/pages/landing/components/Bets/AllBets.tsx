@@ -53,54 +53,63 @@ export default function AllBets() {
         </tr>
       </thead>
       <tbody className="border-spacing-y-3">
-        {lBoardData.reverse().map((data, i) => {
-          return (
-            <tr
-              key={i}
-              className="overflow-hidden text-sm bg-dark-850 text-light"
-            >
-              <td className="rounded-l-sm py-3 text-left pl-3 min-w-[110px]">
-                {data.gameType}
-              </td>
-              <td className="text-left text-white overflow-hidden min-w-[130px]">
-                <Link to={"/"} className="text-white cursor-pointer">
-                  {data.player}
-                </Link>
-              </td>
-              <td className="text-center  min-w-[80px]">
-                <span className="flex items-center justify-center gap-1">
-                  {data.stake}
-                  <img
-                    src={SilverLockIcon}
-                    width="18"
-                    height="18"
-                    className="sc-x7t9ms-0 dnLnNz"
-                  />
-                </span>
-              </td>
-              <td className="text-center min-w-[80px]">
-                <span
-                  className={clsx(
-                    "flex items-center justify-center gap-1",
-                    parseInt(data.profit?.toFixed(2)) > 0 && "text-green-500",
-                  )}
-                >
-                  {data?.profit?.toFixed(2)}
-                  <img
-                    src={SilverLockIcon}
-                    width="18"
-                    height="18"
-                    className="sc-x7t9ms-0 dnLnNz"
-                  />
-                </span>
-              </td>
-              <td className="text-center min-w-[80px]">{data.multiplier}×</td>
-              <td className="pr-3 rounded-r-sm min-w-[90px] text-right">
-                {formatLeaderboardTime(data.time.toString())}
-              </td>
-            </tr>
-          );
-        })}
+        {lBoardData.length > 0 ? (
+          [...lBoardData].reverse().map((data, i) => {
+            if (!data || !data.time) return null;
+            return (
+              <tr
+                key={i}
+                className="overflow-hidden text-sm bg-dark-850 text-light"
+              >
+                <td className="rounded-l-sm py-3 text-left pl-3 min-w-[110px]">
+                  {data.gameType || "N/A"}
+                </td>
+                <td className="text-left text-white overflow-hidden min-w-[130px]">
+                  <Link to={"/"} className="text-white cursor-pointer">
+                    {data.player || "Unknown"}
+                  </Link>
+                </td>
+                <td className="text-center  min-w-[80px]">
+                  <span className="flex items-center justify-center gap-1">
+                    {data.stake?.toFixed(2) || "0.00"}
+                    <img
+                      src={SilverLockIcon}
+                      width="18"
+                      height="18"
+                      className="sc-x7t9ms-0 dnLnNz"
+                    />
+                  </span>
+                </td>
+                <td className="text-center min-w-[80px]">
+                  <span
+                    className={clsx(
+                      "flex items-center justify-center gap-1",
+                      data.profit && parseFloat(data.profit.toFixed(2)) > 0 && "text-green-500",
+                    )}
+                  >
+                    {data.profit?.toFixed(2) || "0.00"}
+                    <img
+                      src={SilverLockIcon}
+                      width="18"
+                      height="18"
+                      className="sc-x7t9ms-0 dnLnNz"
+                    />
+                  </span>
+                </td>
+                <td className="text-center min-w-[80px]">{data.multiplier?.toFixed(2) || "0.00"}×</td>
+                <td className="pr-3 rounded-r-sm min-w-[90px] text-right">
+                  {data.time ? formatLeaderboardTime(data.time.toString()) : "N/A"}
+                </td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            <td colSpan={6} className="text-center py-4 text-gray-500">
+              No bets available
+            </td>
+          </tr>
+        )}
       </tbody>
     </>
   );

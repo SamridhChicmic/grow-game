@@ -1,3 +1,4 @@
+import { ALLOW_OVERDRAWN_BALANCE } from "@/utils/constants";
 import React, { useState } from "react";
 
 const LimboGame: React.FC = () => {
@@ -16,7 +17,7 @@ const LimboGame: React.FC = () => {
   };
 
   const playGame = () => {
-    if (bet > balance) {
+    if (!ALLOW_OVERDRAWN_BALANCE && bet > balance) {
       setMessage("Insufficient balance");
       return;
     }

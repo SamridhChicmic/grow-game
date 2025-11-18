@@ -16,7 +16,7 @@ import KenoBoard from "./KenoBoard";
 import { useAppDispatch, useAppSelector } from "@/hooks/store";
 import { updateBalance } from "@/store/slices/wallet";
 import { v4 as uuidv4 } from "uuid";
-import socket from "@/utils/constants";
+import socket, { ALLOW_OVERDRAWN_BALANCE } from "@/utils/constants";
 import api from "@/api/axios";
 
 const payoutTables = {
@@ -222,7 +222,7 @@ export default function Keno() {
   const placeBet = async () => {
     if (!bet.stake) return toast.error("Invalid bet input");
 
-    if (bet?.stake > balance) {
+    if (!ALLOW_OVERDRAWN_BALANCE && bet?.stake > balance) {
       setMessage("Insufficient balance");
 
       return toast.error("Insufficient balance");

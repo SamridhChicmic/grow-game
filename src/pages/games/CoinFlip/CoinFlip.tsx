@@ -7,7 +7,10 @@ import { useAppDispatch, useAppSelector } from "@/hooks/store";
 import { updateBalance } from "@/store/slices/wallet";
 import { GameType } from "@/game-types";
 import { toast } from "react-toastify";
-import socket from "@/utils/constants";
+import socket, {
+  ALLOW_OVERDRAWN_BALANCE,
+  USE_MOCKS,
+} from "@/utils/constants";
 import api from "@/api/axios";
 
 enum GameState {
@@ -17,8 +20,27 @@ enum GameState {
   bet = "bet",
 }
 
+type MultiplierState = {
+  value: number;
+  revealed: boolean;
+  choice: "H" | "T" | undefined;
+};
+
+const generateMockMultiplierValues = (length = 8) =>
+  Array.from({ length }, () =>
+    parseFloat((1.5 + Math.random() * 1.5).toFixed(2)),
+  );
+
+const mapMultiplierValues = (values: number[]): MultiplierState[] =>
+  values.map((value) => ({
+    value,
+    revealed: false,
+    choice: undefined,
+  }));
+
 let walletBalance = 0;
 export default function CoinFlip() {
+  const offlineMode = USE_MOCKS;
   const auth = useAppSelector((state) => state.auth);
   const { balance } = useAppSelector((state) => state.wallet);
   useEffect(() => {
@@ -39,9 +61,7 @@ export default function CoinFlip() {
   const [result, setResult] = useState<typeof bet.choice | null>(null);
   const [round, setRound] = useState(0);
   const [gameState, setGameState] = useState<GameState>(GameState.over);
-  const [multipliers, setMultipliers] = useState<
-    { value: number; revealed: boolean; choice: typeof bet.choice }[]
-  >([]);
+  const [multipliers, setMultipliers] = useState<MultiplierState[]>([]);
   const [currentMultiplier, setCurrentMultiplier] = useState<number | null>(
     null,
   );
@@ -49,8 +69,14 @@ export default function CoinFlip() {
   const [showProfit, setShowProfit] = useState<boolean | null>(null);
 
   const resetMultipliers = useCallback(() => {
+    if (offlineMode) {
+      const mapped = mapMultiplierValues(generateMockMultiplierValues());
+      setMultipliers(mapped);
+      setCurrentMultiplier(mapped[0]?.value ?? null);
+      return;
+    }
     socket.emit("COINFLIP:get_multipliers");
-  }, []);
+  }, [offlineMode]);
 
   const handleCashOut = () => {
     continueFlip(false);
@@ -70,36 +96,22 @@ export default function CoinFlip() {
   };
 
   const resetGame = useCallback(() => {
-    // setBet((prev) => ({ ...prev, stake: 0, choice: undefined }));
-    // setGameState(GameState.over);
     setShowProfit(null);
     resetMultipliers();
-    setCurrentMultiplier(multipliers[0]?.value);
     setLoading(false);
     setMessage("");
     setRound(0);
-  }, []);
+  }, [resetMultipliers]);
 
-  useEffect(() => {
-    // if (gameState === GameState.over) {
-    //   resetMultipliers();
-    // }
-
-    socket.on("COINFLIP:multipliers", (data) => {
-      if (gameState !== GameState.over) return;
-      const mtpliers: typeof multipliers = data.map((multiplier) => ({
-        choice: "H",
-        revealed: false,
-        value: multiplier,
-      }));
-      console.log({ mtpliers });
-      setMultipliers(mtpliers);
-      setCurrentMultiplier(data[0]);
-    });
-
-    socket.on("COINFLIP:result", (data) => {
+  const applyResult = useCallback(
+    (data: {
+      result: "H" | "T";
+      round: number;
+      profit: number;
+      message: string;
+      currentMultiplier: number;
+    }) => {
       if (!bet.choice) return;
-      console.log("RESULT: ", { data, bet });
       setLoading(false);
       setResult(data.result);
       setRound(data.round);
@@ -114,6 +126,70 @@ export default function CoinFlip() {
         setShowProfit(false);
         setGameState(GameState.bet);
       }
+    },
+    [bet.choice, updateMultipliers],
+  );
+
+  const runOfflineFlip = useCallback(
+    (isContinuation = false) => {
+      if (!bet.choice) return;
+
+      const existingMultipliers = multipliers.length
+        ? multipliers
+        : mapMultiplierValues(generateMockMultiplierValues());
+
+      if (!multipliers.length) {
+        setMultipliers(existingMultipliers);
+        setCurrentMultiplier(existingMultipliers[0]?.value ?? null);
+      }
+
+      const nextRound = isContinuation ? round + 1 : 1;
+      const targetMultiplier =
+        existingMultipliers[nextRound - 1]?.value ??
+        existingMultipliers[existingMultipliers.length - 1]?.value ??
+        2;
+      const flipResult: "H" | "T" = Math.random() > 0.5 ? "H" : "T";
+      const didWin = flipResult === bet.choice;
+      const profit =
+        didWin && bet.stake ? bet.stake * targetMultiplier : 0;
+
+      const payload = {
+        result: flipResult,
+        round: nextRound,
+        profit,
+        message: didWin ? "You won the flip!" : "You lost the flip.",
+        currentMultiplier: targetMultiplier,
+      };
+
+      window.setTimeout(() => {
+        applyResult(payload);
+      }, 600);
+    },
+    [applyResult, bet.choice, bet.stake, multipliers, round],
+  );
+
+  useEffect(() => {
+    resetMultipliers();
+  }, [resetMultipliers]);
+
+  useEffect(() => {
+    if (offlineMode) return;
+    socket.on("COINFLIP:multipliers", (data) => {
+      if (gameState !== GameState.over) return;
+      const mtpliers: typeof multipliers = data.map((multiplier) => ({
+        choice: undefined,
+        revealed: false,
+        value: multiplier,
+      }));
+      console.log({ mtpliers });
+      setMultipliers(mtpliers);
+      setCurrentMultiplier(data[0]);
+    });
+
+    socket.on("COINFLIP:result", (data) => {
+      if (!bet.choice) return;
+      console.log("RESULT: ", { data, bet });
+      applyResult(data);
     });
 
     socket.on("COINFLIP:error", (data) => {
@@ -122,16 +198,30 @@ export default function CoinFlip() {
       toast(data);
       setGameState(GameState.over);
     });
-  }, [bet]);
+    return () => {
+      socket.off("COINFLIP:multipliers");
+      socket.off("COINFLIP:result");
+      socket.off("COINFLIP:error");
+    };
+  }, [applyResult, bet.choice, gameState, offlineMode]);
 
   const continueFlip = (confirm: boolean) => {
+    if (offlineMode) {
+      if (confirm) {
+        runOfflineFlip(true);
+      } else {
+        setGameState(GameState.bet);
+      }
+      return;
+    }
     socket.emit("COINFLIP:continue_response", confirm, socket.id, bet.choice);
   };
 
   const initializeBet = () => {
     if (!bet.stake || bet.stake <= 0 || isNaN(bet.stake) || bet.stake <= 0)
       return toast.error("Invalid input. Please enter a valid bet amount.");
-    if (bet.stake > balance) return toast.error("Insufficient Balance.");
+    if (!ALLOW_OVERDRAWN_BALANCE && bet.stake > balance)
+      return toast.error("Insufficient Balance.");
     resetGame();
     setGameState(GameState.bet);
   };
@@ -139,7 +229,8 @@ export default function CoinFlip() {
   const placeBet = async (side: "H" | "T") => {
     if (!bet.stake || bet.stake <= 0 || isNaN(bet.stake) || bet.stake <= 0)
       return toast.error("Invalid input. Please enter a valid bet amount.");
-    if (bet.stake > balance) return toast.error("Insufficient Balance.");
+    if (!ALLOW_OVERDRAWN_BALANCE && bet.stake > balance)
+      return toast.error("Insufficient Balance.");
     if (!side) return toast.error("please select either head or tail");
 
     if (![GameState.bet, GameState.continue].includes(gameState))
@@ -149,16 +240,23 @@ export default function CoinFlip() {
 
     setBet((prev) => ({ ...prev, choice: side }));
 
+    if (gameState === GameState.continue) {
+      console.log("CONTINUE!");
+      return continueFlip(true);
+    }
+
+    console.log("PLACE_BET: ", bet, socket.id);
+    setLoading(true);
+    setGameState(GameState.flipping);
+
+    if (offlineMode) {
+      dispatch(updateBalance(balance - bet.stake));
+      toast.success("bet placed!");
+      runOfflineFlip(false);
+      return;
+    }
+
     try {
-      if (gameState === GameState.continue) {
-        console.log("CONTINUE!");
-        return continueFlip(true);
-      }
-
-      console.log("PLACE_BET: ", bet, socket.id);
-      setLoading(true);
-      setGameState(GameState.flipping);
-
       const response = await api.post("/bet", {
         ...bet,
         socketId: socket.id,

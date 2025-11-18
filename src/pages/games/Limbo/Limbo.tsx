@@ -5,7 +5,7 @@ import { AnimatedList, BetInput, Button, ProvablyFair } from "@/components";
 import { GameType } from "@/game-types";
 import { useAppDispatch, useAppSelector } from "@/hooks/store";
 import { updateBalance } from "@/store/slices/wallet";
-import socket from "@/utils/constants";
+import socket, { ALLOW_OVERDRAWN_BALANCE } from "@/utils/constants";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -91,16 +91,18 @@ export default function Limbo() {
   }, [auth.user?.username, historyItems.length]);
 
   const placeBet = async () => {
-    if (!bet.stake) return toast.error("Invalid bet input");
+    if (!bet.stake || bet.stake <= 0) return toast.error("Invalid bet input");
+    if (!bet.multiplier || bet.multiplier < 1) return toast.error("Multiplier must be at least 1.00");
 
     console.log("BET: ", { bet });
 
-    if (bet?.stake > balance) {
+    if (!ALLOW_OVERDRAWN_BALANCE && bet?.stake > balance) {
       return toast.error("Insufficient balance");
     }
 
     try {
       setLoading(true);
+      setGameRunning(true);
       const response = await api.post("/bet", {
         ...bet,
         socketId: socket.id,
@@ -108,13 +110,17 @@ export default function Limbo() {
 
       const data = response.data;
 
-      if (!data.bet) return toast.error("Could not place bet");
+      if (!data.bet) {
+        setGameRunning(false);
+        return toast.error("Could not place bet");
+      }
 
       dispatch(updateBalance(balance - bet.stake!));
 
       toast.success("Bet placed");
     } catch (error) {
       console.error("PLACE_BET:LIMBO", error);
+      setGameRunning(false);
       return toast.error("An error occurred");
     } finally {
       setLoading(false);
@@ -145,6 +151,11 @@ export default function Limbo() {
             (savedStatus === GameStatus.win ? bet.multiplier : 0)?.toFixed(2),
           );
         }
+        // Reset game state after result is shown
+        setGameRunning(false);
+        setResult(null);
+        setValue(0);
+        setBet((prev) => ({ ...prev, profit: 0 }));
       }
       setValue(currentValue);
     }, stepTime);

@@ -27,6 +27,19 @@ const createMockPlayer = () => ({
   profit: randomBetween(0.1, 4),
 });
 
+// Create mock leaderboard data matching AllBets component structure
+const createMockLeaderboardTable = (length = 25) => {
+  const gameTypes: GameType[] = ["LIMBO", "COINFLIP", "DICE", "CRASH", "MINES", "ROULETTE", "SLOTS"];
+  return Array.from({ length }, () => ({
+    gameType: gameTypes[Math.floor(Math.random() * gameTypes.length)] as GameType,
+    player: randomUsername(),
+    stake: randomBetween(0.1, 100),
+    profit: randomBetween(-50, 200), // Can be negative for losses
+    multiplier: randomBetween(1.01, 10),
+    time: new Date(Date.now() - Math.random() * 86400000), // Random time within last 24 hours
+  }));
+};
+
 const createMockLeaderboard = (length = 8) =>
   Array.from({ length }, () => createMockPlayer());
 
@@ -84,7 +97,7 @@ const reactions: Reaction[] = [
   {
     match: (event) => event === "LEADERBOARD:get_table",
     emit: (socket) => {
-      socket.dispatch("LEADERBOARD:table", createMockLeaderboard(25));
+      socket.dispatch("LEADERBOARD:table", createMockLeaderboardTable(25));
     },
   },
   {
@@ -126,11 +139,7 @@ const reactions: Reaction[] = [
     match: (event) => event === "LIMBO:get_multipliers",
     emit: (socket) => {
       socket.dispatch("LIMBO:multipliers", createMockMultipliers());
-      socket.dispatch("LIMBO:result", {
-        result: randomBetween(1, 10),
-        status: Math.random() > 0.5 ? "win" : "lose",
-        profit: randomBetween(0, 2),
-      });
+      // Result will be emitted after bet is placed via API
     },
   },
   {
